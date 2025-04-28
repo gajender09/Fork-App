@@ -4,4 +4,4 @@
 
 My project is live at:
 
-**[https://vercel.com/gajenders-projects/v0-fork-app-landing-page](https://vercel.com/gajenders-projects/v0-fork-app-landing-page)**
+**[https://vercel.com/gajenders-projects/fork-app-landing-page](https://vercel.com/gajenders-projects/fork-app-landing-page)**
