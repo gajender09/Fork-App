@@ -64,13 +64,14 @@ const screenshots = [
   },
 ]
 
-export default function AppScreenshotSlider() {
+export default function AppScreenshotDeck() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
-  const sliderRef = useRef<HTMLDivElement>(null)
+  const [showInfo, setShowInfo] = useState(false)
+  const deckRef = useRef<HTMLDivElement>(null)
 
   const goToSlide = (index: number) => {
-    if (isAnimating) return
+    if (isAnimating || index === currentIndex) return
     setIsAnimating(true)
     setCurrentIndex(index)
     setTimeout(() => setIsAnimating(false), 500)
@@ -90,17 +91,20 @@ export default function AppScreenshotSlider() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      goToNext()
+      if (!showInfo) {
+        goToNext()
+      }
     }, 5000)
     return () => clearInterval(interval)
-  }, [currentIndex])
+  }, [currentIndex, showInfo])
 
   return (
-    <div className="relative max-w-6xl mx-auto">
-      <div className="overflow-hidden rounded-3xl shadow-2xl bg-gray-900 p-4 md:p-8">
-        <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-          <div className="relative w-full md:w-auto flex justify-center">
-            <div className="relative w-64 h-[500px] md:w-72 md:h-[580px]">
+    <div className="relative mx-auto">
+      {/* Main deck container */}
+      <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+        <div className="w-full md:w-1/2 flex justify-center">
+          <div className="card-deck relative h-[600px] flex items-center justify-center">
+            <div ref={deckRef} className="relative w-[280px] h-[560px]">
               {screenshots.map((screenshot, index) => {
                 // Calculate position for card deck effect
                 const offset = index - currentIndex
@@ -111,32 +115,55 @@ export default function AppScreenshotSlider() {
                 let translateY = 0
                 let rotate = 0
                 let scale = 1
+                let opacity = 1
 
                 if (offset !== 0) {
-                  translateX = offset * 10
-                  translateY = Math.abs(offset) * 10
-                  rotate = offset * -5
-                  scale = 1 - Math.abs(offset) * 0.05
+                  // Cards before the current one
+                  if (offset < 0) {
+                    translateX = -10 * Math.abs(offset)
+                    translateY = 10 * Math.abs(offset)
+                    rotate = -5 * Math.abs(offset)
+                    scale = 1 - 0.05 * Math.abs(offset)
+                    opacity = 1 - 0.2 * Math.abs(offset)
+                  }
+                  // Cards after the current one
+                  else {
+                    translateX = 10 * offset
+                    translateY = 10 * offset
+                    rotate = 5 * offset
+                    scale = 1 - 0.05 * offset
+                    opacity = 1 - 0.2 * offset
+                  }
+                }
+
+                // Limit the number of visible cards
+                if (Math.abs(offset) > 3) {
+                  opacity = 0
                 }
 
                 return (
                   <div
                     key={screenshot.id}
                     className={cn(
-                      "absolute top-0 left-0 w-full h-full transition-all duration-500 ease-in-out",
-                      isActive ? "opacity-100" : "opacity-80",
+                      "absolute top-0 left-0 w-full h-full transition-all duration-500 ease-out card-deck-item",
+                      isActive ? "active" : "",
                     )}
                     style={{
                       transform: `translateX(${translateX}px) translateY(${translateY}px) rotate(${rotate}deg) scale(${scale})`,
                       zIndex: zIndex,
+                      opacity: opacity,
                     }}
+                    onClick={() => goToSlide(index)}
                   >
-                    <div className="relative w-full h-full bg-white rounded-[36px] shadow-xl overflow-hidden border-8 border-gray-800">
+                    <div className="phone-mockup w-full h-full bg-white">
+                      <div className="phone-notch"></div>
+                      <div className="phone-button"></div>
+                      <div className="phone-button phone-button-2"></div>
                       <Image
                         src={screenshot.src || "/placeholder.svg"}
                         alt={screenshot.alt}
-                        width={300}
-                        height={600}
+                        width={320}
+                        height={640}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -144,54 +171,48 @@ export default function AppScreenshotSlider() {
                 )
               })}
             </div>
-          </div>
 
-          <div className="hidden md:block max-w-md">
-            <div className="bg-gray-800 p-6 rounded-2xl">
-              <h3 className="text-2xl font-bold text-white mb-2">{screenshots[currentIndex].title}</h3>
-              <p className="text-gray-300">{screenshots[currentIndex].description}</p>
+            {/* Controls */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+              <button
+                onClick={goToPrevious}
+                className="bg-white/90 hover:bg-white text-gray-800 backdrop-blur-sm rounded-full p-3 shadow-lg transition-all hover:scale-110"
+                aria-label="Previous screenshot"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={goToNext}
+                className="bg-white/90 hover:bg-white text-gray-800 backdrop-blur-sm rounded-full p-3 shadow-lg transition-all hover:scale-110"
+                aria-label="Next screenshot"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-center mt-8 gap-2">
-          {screenshots.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToSlide(index)}
-              className={cn(
-                "w-3 h-3 rounded-full transition-all",
-                index === currentIndex ? "bg-orange-500 w-8" : "bg-gray-600 hover:bg-gray-500",
-              )}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
-        </div>
+        {/* Info Panel - Always visible on desktop, toggleable on mobile */}
+        <div className="w-full md:w-1/2 mt-8 md:mt-0">
+          <div className="bg-white/90 backdrop-blur-md rounded-2xl p-6 shadow-xl max-w-md mx-auto md:mx-0">
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">{screenshots[currentIndex].title}</h3>
+            <p className="text-gray-600 mb-6">{screenshots[currentIndex].description}</p>
 
-        <div className="absolute top-1/2 left-4 -translate-y-1/2">
-          <button
-            onClick={goToPrevious}
-            className="bg-white/10 hover:bg-white/20 text-white rounded-full p-2 backdrop-blur-sm transition-colors"
-            aria-label="Previous screenshot"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
+            <div className="flex gap-2">
+              {screenshots.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToSlide(index)}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-all",
+                    index === currentIndex ? "bg-primary w-6" : "bg-gray-300 hover:bg-gray-400",
+                  )}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-
-        <div className="absolute top-1/2 right-4 -translate-y-1/2">
-          <button
-            onClick={goToNext}
-            className="bg-white/10 hover:bg-white/20 text-white rounded-full p-2 backdrop-blur-sm transition-colors"
-            aria-label="Next screenshot"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
-        </div>
-      </div>
-
-      <div className="block md:hidden mt-8 text-center px-4">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{screenshots[currentIndex].title}</h3>
-        <p className="text-gray-600">{screenshots[currentIndex].description}</p>
       </div>
     </div>
   )
